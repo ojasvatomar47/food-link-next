@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+import apiClient, { setAuthToken } from "@/lib/axios";
 
 // Define the state for auth
 interface AuthState {
@@ -27,6 +27,9 @@ const getInitialState = (): AuthState => {
       };
     }
     const storedState = JSON.parse(serializedState);
+    if (storedState.token) {
+      setAuthToken(storedState.token);
+    }
     return {
       user: storedState.user || null,
       token: storedState.token || null,
@@ -51,8 +54,8 @@ export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (data: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const res = await axios.post("/api/auth/login", data);
-      return res.data; // expects { user, token }
+      const res = await apiClient.post("/auth/login", data);
+      return res.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.error || "Login failed");
     }
@@ -76,8 +79,8 @@ export const registerUser = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const res = await axios.post("/api/auth/register", data);
-      return res.data; // expects { user }
+      const res = await apiClient.post("/auth/register", data);
+      return res.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.error || "Registration failed");
     }
@@ -90,14 +93,13 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<AuthState["user"]>) => {
       state.user = action.payload;
-      // Optional: Save user to localStorage
       localStorage.setItem("authState", JSON.stringify({ ...state, user: action.payload }));
     },
     clearUser: (state) => {
       state.user = null;
       state.token = null;
-      // Clear from localStorage on logout
       localStorage.removeItem("authState");
+      setAuthToken(null);
     },
   },
   extraReducers: (builder) => {
@@ -111,11 +113,11 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
-        // Save to localStorage on successful login
         localStorage.setItem(
           "authState",
           JSON.stringify({ user: action.payload.user, token: action.payload.token })
         );
+        setAuthToken(action.payload.token);
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
