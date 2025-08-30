@@ -14,13 +14,37 @@ interface AuthState {
   error: string | null;
 }
 
-// Initial state
-const initialState: AuthState = {
-  user: null,
-  token: null,
-  loading: false,
-  error: null,
+// Helper function to get the initial state from localStorage
+const getInitialState = (): AuthState => {
+  try {
+    const serializedState = localStorage.getItem("authState");
+    if (serializedState === null) {
+      return {
+        user: null,
+        token: null,
+        loading: false,
+        error: null,
+      };
+    }
+    const storedState = JSON.parse(serializedState);
+    return {
+      user: storedState.user || null,
+      token: storedState.token || null,
+      loading: false,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      user: null,
+      token: null,
+      loading: false,
+      error: null,
+    };
+  }
 };
+
+// Initial state
+const initialState: AuthState = getInitialState();
 
 // Async thunk for login
 export const loginUser = createAsyncThunk(
@@ -66,10 +90,14 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<AuthState["user"]>) => {
       state.user = action.payload;
+      // Optional: Save user to localStorage
+      localStorage.setItem("authState", JSON.stringify({ ...state, user: action.payload }));
     },
     clearUser: (state) => {
       state.user = null;
       state.token = null;
+      // Clear from localStorage on logout
+      localStorage.removeItem("authState");
     },
   },
   extraReducers: (builder) => {
@@ -83,6 +111,11 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        // Save to localStorage on successful login
+        localStorage.setItem(
+          "authState",
+          JSON.stringify({ user: action.payload.user, token: action.payload.token })
+        );
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
