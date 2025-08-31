@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import apiClient, { setAuthToken } from "@/lib/axios";
 import axios from "axios";
 
 // Define the state for auth
@@ -14,48 +15,74 @@ interface AuthState {
   error: string | null;
 }
 
-// Initial state
-const initialState: AuthState = {
-  user: null,
-  token: null,
-  loading: false,
-  error: null,
+// Utility function to check if a JWT token has expired
+export const isTokenExpired = (token: string): boolean => {
+  if (!token) {
+    return true;
+  }
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const nowInSeconds = Date.now() / 1000;
+    return payload.exp < nowInSeconds;
+  } catch (e) {
+    return true;
+  }
 };
 
-// Async thunk for login
+// Helper function to get the initial state from localStorage
+const getInitialState = (): AuthState => {
+  try {
+    const serializedState = localStorage.getItem("authState");
+    if (serializedState === null) {
+      return { user: null, token: null, loading: false, error: null };
+    }
+    const storedState = JSON.parse(serializedState);
+    if (storedState.token && isTokenExpired(storedState.token)) {
+      localStorage.removeItem("authState");
+      return { user: null, token: null, loading: false, error: null };
+    }
+    if (storedState.token) {
+      setAuthToken(storedState.token);
+    }
+    return {
+      user: storedState.user || null,
+      token: storedState.token || null,
+      loading: false,
+      error: null,
+    };
+  } catch (err) {
+    return { user: null, token: null, loading: false, error: null };
+  }
+};
+
+const initialState: AuthState = getInitialState();
+
 export const loginUser = createAsyncThunk(
   "auth/loginUser",
   async (data: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const res = await axios.post("/api/auth/login", data);
-      return res.data; // expects { user, token }
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.error || "Login failed");
+      const res = await apiClient.post("/auth/login", data);
+      return res.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Login failed");
     }
   }
 );
 
-// Async thunk for register
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
-  async (
-    data: {
-      username: string;
-      email: string;
-      password: string;
-      userType: string;
-      verificationCode: string;
-      latitude: number;
-      longitude: number;
-      locationName?: string;
-    },
-    { rejectWithValue }
-  ) => {
+  async (data: { username: string; email: string; password: string; userType: string; verificationCode: string; latitude: number; longitude: number; locationName?: string }, { rejectWithValue }) => {
     try {
-      const res = await axios.post("/api/auth/register", data);
-      return res.data; // expects { user }
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.error || "Registration failed");
+      const res = await apiClient.post("/auth/register", data);
+      return res.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Registration failed");
     }
   }
 );
@@ -66,10 +93,13 @@ const authSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<AuthState["user"]>) => {
       state.user = action.payload;
+      localStorage.setItem("authState", JSON.stringify({ ...state, user: action.payload }));
     },
     clearUser: (state) => {
       state.user = null;
       state.token = null;
+      localStorage.removeItem("authState");
+      setAuthToken(null);
     },
   },
   extraReducers: (builder) => {
@@ -83,6 +113,8 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        localStorage.setItem("authState", JSON.stringify({ user: action.payload.user, token: action.payload.token }));
+        setAuthToken(action.payload.token);
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
