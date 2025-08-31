@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { AppStore } from '@/features/store';
+import { clearUser } from '@/features/auth/authSlice';
 
 const apiClient = axios.create({
   baseURL: '/api',
@@ -26,5 +28,19 @@ export const setAuthToken = (token: string | null) => {
     delete apiClient.defaults.headers.common['Authorization'];
   }
 };
+
+export function setupResponseInterceptor(store: AppStore) {
+  apiClient.interceptors.response.use(
+    (response) => {
+      return response;
+    },
+    (error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        store.dispatch(clearUser());
+      }
+      return Promise.reject(error);
+    }
+  );
+}
 
 export default apiClient;

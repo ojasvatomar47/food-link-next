@@ -12,3 +12,4 @@ export const store = configureStore({
 // TS types for hooks
 export type RootState = ReturnType<typeof store.getState>; // type for state
 export type AppDispatch = typeof store.dispatch; // type for dispatch
+export type AppStore = typeof store;
