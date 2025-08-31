@@ -3,7 +3,7 @@ import apiClient from "@/lib/axios";
 import axios from "axios";
 
 // Define interfaces for your data
-interface OrderListing {
+export interface OrderListing {
   _id: string;
   name: string;
   quantity: string;
@@ -12,7 +12,7 @@ interface OrderListing {
   createdAt: Date;
 }
 
-interface Order {
+export interface Order {
   _id: string;
   restaurantId: string;
   ngoId: string;

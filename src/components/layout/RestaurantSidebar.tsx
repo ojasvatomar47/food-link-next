@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, PlusCircle, List, X, User } from "lucide-react";
+import { LayoutDashboard, PlusCircle, List, X, User, ListOrdered } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import { useSelector } from "react-redux";
 import { RootState } from "@/features/store";
@@ -17,6 +17,7 @@ export default function RestaurantSidebar({ isOpen, onClose }: { isOpen: boolean
     { name: "Dashboard", href: "/restaurant/dashboard", icon: LayoutDashboard },
     { name: "Create Listing", href: "/restaurant/create-listing", icon: PlusCircle },
     { name: "My Listings", href: "/restaurant/my-listings", icon: List },
+    { name: "My Orders", href: "/restaurant/my-orders", icon: ListOrdered },
   ];
 
   return (

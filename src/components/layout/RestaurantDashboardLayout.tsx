@@ -2,7 +2,7 @@
 
 import React, { ReactNode, useState } from "react";
 import RestaurantSidebar from "@/components/layout/RestaurantSidebar";
-import MobileSidebarToggle from "@/components/layout/RestaurantMobileSidebarToggle";
+import MobileSidebarToggle from "@/components/layout/MobileSidebarToggle";
 import { useSelector } from "react-redux";
 import { RootState } from "@/features/store";
 import { User } from "lucide-react";

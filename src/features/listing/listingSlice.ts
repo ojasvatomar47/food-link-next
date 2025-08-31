@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import apiClient from "@/lib/axios";
+import axios from "axios";
 
 // Define interfaces for your data
 export interface Listing {
@@ -32,11 +33,30 @@ export const createListing = createAsyncThunk(
     try {
       const res = await apiClient.post("/listings", listingData);
       return res.data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.error || "Failed to create listing");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Failed to create listing");
     }
   }
 );
+
+export const fetchListings = createAsyncThunk(
+  "listings/fetchListings",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.get("/listings");
+      return res.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Failed to fetch listings");
+    }
+  }
+);
+
 
 export const fetchRestaurantListings = createAsyncThunk(
   "listings/fetchRestaurantListings",
@@ -44,8 +64,11 @@ export const fetchRestaurantListings = createAsyncThunk(
     try {
       const res = await apiClient.get("/listings/restaurant");
       return res.data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.error || "Failed to fetch listings");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Failed to fetch listings");
     }
   }
 );
@@ -56,8 +79,11 @@ export const updateListing = createAsyncThunk(
     try {
       const res = await apiClient.put(`/listings/${id}`, updateData);
       return res.data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.error || "Failed to update listing");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Failed to update listing");
     }
   }
 );
@@ -68,8 +94,11 @@ export const deleteListing = createAsyncThunk(
     try {
       await apiClient.delete(`/listings/${id}`);
       return id;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.error || "Failed to delete listing");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Failed to delete listing");
     }
   }
 );
@@ -94,6 +123,18 @@ const listingSlice = createSlice({
         state.error = action.payload as string;
       })
       // Fetch Listings
+      .addCase(fetchListings.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchListings.fulfilled, (state, action) => {
+        state.loading = false;
+        state.listings = action.payload;
+      })
+      .addCase(fetchListings.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
       .addCase(fetchRestaurantListings.pending, (state) => {
         state.loading = true;
         state.error = null;

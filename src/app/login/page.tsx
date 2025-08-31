@@ -30,7 +30,7 @@ export default function LoginPage() {
       if (userType === "Restaurant") {
         router.push("/restaurant/dashboard");
       } else if (userType === "Charity/NGO") {
-        router.push("/charity/dashboard");
+        router.push("/ngo/my-orders");
       }
     } else if (loginUser.rejected.match(resultAction)) {
       toast.error(resultAction.payload as string);
