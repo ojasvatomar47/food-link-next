@@ -7,6 +7,7 @@ import { createListing } from "@/features/listing/listingSlice";
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import RestaurantDashboardLayout from "@/components/layout/RestaurantDashboardLayout";
+import { PlusCircle } from "lucide-react";
 
 export default function CreateListingPage() {
   const [form, setForm] = useState({
@@ -38,40 +39,43 @@ export default function CreateListingPage() {
 
   return (
     <RestaurantDashboardLayout>
-      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Create New Listing</h2>
-      <p className="text-gray-600 mb-6">Fill out the details for your food donation.</p>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <h2 className="text-3xl font-bold text-gray-900 mb-4">Create New Listing</h2>
+      <p className="text-lg text-gray-600 mb-8">Fill out the details for your food donation and help reduce waste.</p>
+      <form onSubmit={handleSubmit} className="space-y-8">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Food Item Name</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Food Item Name</label>
           <input
             type="text"
+            id="name"
             name="name"
             value={form.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
+            className="mt-2 block w-full rounded-xl border border-gray-300 p-4 shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors"
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Quantity</label>
+            <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Quantity</label>
             <input
               type="text"
+              id="quantity"
               name="quantity"
               value={form.quantity}
               onChange={handleChange}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="mt-2 block w-full rounded-xl border border-gray-300 p-4 shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Measurement</label>
+            <label htmlFor="measurement" className="block text-sm font-medium text-gray-700">Measurement</label>
             <select
+              id="measurement"
               name="measurement"
               value={form.measurement}
               onChange={handleChange}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="mt-2 block w-full rounded-xl border border-gray-300 p-4 shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors"
             >
               <option value="kg">kg</option>
               <option value="g">g</option>
@@ -83,13 +87,14 @@ export default function CreateListingPage() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Expiry (in hours)</label>
+          <label htmlFor="expiry" className="block text-sm font-medium text-gray-700">Expiry (in hours)</label>
           <select
+            id="expiry"
             name="expiry"
             value={form.expiry}
             onChange={handleChange}
             required
-            className="mt-1 block w-full rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
+            className="mt-2 block w-full rounded-xl border border-gray-300 p-4 shadow-sm focus:border-green-500 focus:ring-green-500 transition-colors"
           >
             <option value={1}>1 hour</option>
             <option value={2}>2 hours</option>
@@ -99,10 +104,23 @@ export default function CreateListingPage() {
         </div>
         <button
           type="submit"
-          className="w-full rounded-md bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+          className="flex w-full items-center justify-center rounded-xl bg-green-600 px-6 py-4 text-lg font-semibold text-white shadow-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200"
           disabled={loading}
         >
-          {loading ? "Creating..." : "Create Listing"}
+          {loading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Creating...
+            </>
+          ) : (
+            <>
+              <PlusCircle className="mr-2" size={20} />
+              Create Listing
+            </>
+          )}
         </button>
       </form>
     </RestaurantDashboardLayout>

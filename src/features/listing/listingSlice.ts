@@ -2,7 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
 import apiClient from "@/lib/axios";
 
 // Define interfaces for your data
-interface Listing {
+export interface Listing {
   _id: string;
   restaurantId: string;
   name: string;
