@@ -8,7 +8,9 @@ export async function middleware(req: NextRequest) {
     '/api/listings/restaurant',
     '/api/orders',
     '/api/orders/restaurant',
-    '/api/orders/ngo'
+    '/api/orders/ngo',
+    '/api/orders/analytics/restaurant',
+    '/api/orders/analytics/ngo'
   ];
 
   if (protectedRoutes.some(route => req.nextUrl.pathname.startsWith(route))) {
@@ -24,6 +26,8 @@ export const config = {
     '/api/listings/restaurant/:path*',
     '/api/orders/:path*',
     '/api/orders/restaurant/:path*',
-    '/api/orders/ngo/:path*'
+    '/api/orders/ngo/:path*',
+    '/api/orders/analytics/restaurant/:path*',
+    '/api/orders/analytics/ngo/:path*'
   ],
 };

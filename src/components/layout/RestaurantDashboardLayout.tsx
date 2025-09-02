@@ -17,15 +17,18 @@ export default function RestaurantDashboardLayout({ children }: { children: Reac
 
   return (
     <div className="relative flex min-h-screen bg-gray-50 lg:bg-gray-100">
+      {/* Sidebar */}
       <RestaurantSidebar isOpen={isSidebarOpen} onClose={toggleSidebar} />
-      <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col lg:ml-64">
         {/* Mobile Header with Toggle Button */}
-        <div className="lg:hidden">
+        <div className="lg:hidden p-4">
           <MobileSidebarToggle onOpen={toggleSidebar} />
         </div>
 
         {/* Desktop Header */}
-        <div className="hidden lg:flex mb-8 items-center justify-between">
+        <header className="hidden lg:flex items-center justify-between px-8 py-6 bg-gray-50">
           <div>
             <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
               Restaurant Dashboard
@@ -40,13 +43,15 @@ export default function RestaurantDashboardLayout({ children }: { children: Reac
               <span className="text-gray-700 font-medium">{user?.username}</span>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Main content area */}
-        <div className="rounded-2xl bg-white p-6 lg:p-10 shadow-xl">
-          {children}
-        </div>
-      </main>
+        {/* Scrollable main content */}
+        <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-6">
+          <div className="rounded-2xl bg-white p-6 lg:p-10 shadow-xl">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
