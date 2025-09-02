@@ -7,7 +7,7 @@ import { createOrder } from "@/features/order/orderSlice";
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import NgoDashboardLayout from "@/components/layout/NGODashboardLayout";
-import { Frown, PackageOpen, ChevronLeft, ChevronRight, ShoppingBag, PlusCircle, Trash2 } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, ShoppingBag, PlusCircle, Trash2, RotateCw } from "lucide-react";
 
 interface BasketItem {
   listingId: string;
@@ -101,11 +101,14 @@ export default function NgoListingsPage() {
       toast.success("Order placed successfully! We'll notify the restaurant.");
       setBasket([]);
       setSelectedRestaurantId(null);
-      // Optional: Refetch listings to update the UI
       dispatch(fetchListings());
     } else if (createOrder.rejected.match(resultAction)) {
       toast.error(resultAction.payload as string);
     }
+  };
+
+  const handleRefresh = () => {
+    dispatch(fetchListings());
   };
 
   // Pagination Logic
@@ -141,7 +144,17 @@ export default function NgoListingsPage() {
 
   return (
     <NgoDashboardLayout>
-      <h2 className="text-3xl font-bold text-gray-900 mb-6">Browse Listings</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl font-bold text-gray-900">Browse Listings</h2>
+        <button
+          onClick={handleRefresh}
+          className="p-2 text-gray-500 rounded-full hover:bg-gray-100 transition-colors"
+          title="Refresh Listings"
+          disabled={loading}
+        >
+          <RotateCw size={20} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
 
       {/* Filter Section */}
       <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4 mb-6 p-4 bg-gray-50 rounded-xl shadow-inner">

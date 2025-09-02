@@ -7,7 +7,7 @@ import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import RestaurantDashboardLayout from "@/components/layout/RestaurantDashboardLayout";
 import UpdateListingModal from "@/components/layout/RestaurantUpdateListingModal";
-import { Edit2, Trash2, Frown, PackageOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit2, Trash2, Frown, PackageOpen, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
 
 export default function MyListingsPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -43,6 +43,10 @@ export default function MyListingsPage() {
     setSelectedListing(null);
   };
 
+  const handleRefresh = () => {
+    dispatch(fetchRestaurantListings());
+  };
+
   // Pagination Logic
   const indexOfLastListing = currentPage * listingsPerPage;
   const indexOfFirstListing = indexOfLastListing - listingsPerPage;
@@ -76,12 +80,23 @@ export default function MyListingsPage() {
 
   return (
     <RestaurantDashboardLayout>
-      <h2 className="text-3xl font-bold text-gray-900 mb-6">My Listings</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl font-bold text-gray-900">My Listings</h2>
+        <button
+          onClick={handleRefresh}
+          className="p-2 text-gray-500 rounded-full hover:bg-gray-100 transition-colors"
+          title="Refresh Listings"
+          disabled={loading}
+        >
+          <RotateCw size={20} className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
       {listings.length === 0 ? (
-        <div className="text-center text-gray-500 col-span-full py-20 flex flex-col items-center">
+        <div className="bg-white rounded-2xl p-6 shadow-md text-center text-gray-500 col-span-full py-20 flex flex-col items-center">
           <PackageOpen size={48} className="mb-4" />
           <p className="text-lg font-medium">You have not created any listings yet.</p>
-          <p className="mt-2 text-gray-600">Go to &quot;Create Listing&quot; to add your first one.</p>
+          <p className="mt-2 text-gray-600">Go to "Create Listing" to add your first one.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-6 shadow-md">

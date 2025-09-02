@@ -128,7 +128,7 @@ export async function updateOrder(req: NextRequest, { params }: { params: { id: 
 
         const { id } = params;
         const body = await req.json();
-        const { status, review } = body;
+        const { status, review, confirm } = body;
 
         const order = await Order.findById(id);
         if (!order) {
@@ -142,8 +142,20 @@ export async function updateOrder(req: NextRequest, { params }: { params: { id: 
             return NextResponse.json({ error: "Not authorized to modify this order" }, { status: 403 });
         }
 
-        // Logic to handle status changes
-        if (status) {
+        // Handle confirmation of a pending status change
+        if (confirm) {
+            if (!order.pendingStatus) {
+                return NextResponse.json({ error: "No pending status to confirm" }, { status: 400 });
+            }
+            if (order.pendingStatus.requestedBy.toString() === userId) {
+                return NextResponse.json({ error: "Cannot confirm your own request" }, { status: 400 });
+            }
+
+            if (confirm === 'yes') {
+                order.status = order.pendingStatus.status;
+            }
+            order.pendingStatus = undefined;
+        } else if (status) { // Handle a new request for a status change
             switch (status) {
                 case 'accepted':
                     if (!isRestaurant) {
@@ -159,19 +171,17 @@ export async function updateOrder(req: NextRequest, { params }: { params: { id: 
                         return NextResponse.json({ error: "Only restaurants can decline an order" }, { status: 403 });
                     }
                     order.status = 'declined';
-                    // The fix: The map function is now correctly typed
                     await Listing.updateMany({ _id: { $in: order.listings.map((l: any) => l._id) } }, { status: 'available', claimedBy: null });
                     break;
                 case 'cancelled':
-                    order.status = 'cancelled';
-                    // Make listings available again
-                    await Listing.updateMany({ _id: { $in: order.listings.map((l: any) => l._id) } }, { status: 'available', claimedBy: null });
-                    break;
                 case 'fulfilled':
                     if (order.status !== 'accepted') {
-                        return NextResponse.json({ error: "Order must be accepted before it can be fulfilled" }, { status: 400 });
+                        return NextResponse.json({ error: "Order must be accepted before it can be fulfilled or cancelled" }, { status: 400 });
                     }
-                    order.status = 'fulfilled';
+                    if (order.pendingStatus) {
+                        return NextResponse.json({ error: "A pending status change is already in progress" }, { status: 400 });
+                    }
+                    order.pendingStatus = { status, requestedBy: new mongoose.Types.ObjectId(userId) };
                     break;
                 default:
                     return NextResponse.json({ error: "Invalid status update" }, { status: 400 });
