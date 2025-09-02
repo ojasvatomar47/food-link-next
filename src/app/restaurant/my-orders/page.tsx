@@ -6,23 +6,37 @@ import { fetchOrdersByRestaurant, updateOrder, Order } from "@/features/order/or
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import RestaurantDashboardLayout from "@/components/layout/RestaurantDashboardLayout";
-import { Edit2, Trash2, Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw } from "lucide-react";
 import OrderDetailsModal from "@/components/orders/OrderDetailsModal";
+import OrderConfirmationModal from "@/components/orders/OrderConfirmationModal";
 
 export default function RestaurantOrdersPage() {
     const dispatch = useDispatch<AppDispatch>();
     const { orders, loading, error } = useSelector((state: RootState) => state.orders);
+    const { user } = useSelector((state: RootState) => state.auth);
     const [currentPage, setCurrentPage] = useState(1);
     const ordersPerPage = 10;
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
     useEffect(() => {
         dispatch(fetchOrdersByRestaurant());
     }, [dispatch]);
 
-    const handleUpdateStatus = async (id: string, status: Order['status']) => {
+    // Check for pending status from the NGO
+    useEffect(() => {
+        const pendingOrder = orders.find(
+            (o) => o.pendingStatus && o.pendingStatus.requestedBy.toString() !== user?.id
+        );
+        if (pendingOrder) {
+            setSelectedOrder(pendingOrder);
+            setIsConfirmationModalOpen(true);
+        }
+    }, [orders, user, isConfirmationModalOpen]);
+
+    const handleUpdateStatus = async (id: string, status: 'accepted' | 'declined') => {
         const resultAction = await dispatch(updateOrder({ id, updateData: { status } }));
         if (updateOrder.fulfilled.match(resultAction)) {
             toast.success(`Order ${status} successfully!`);
@@ -31,14 +45,52 @@ export default function RestaurantOrdersPage() {
         }
     };
 
-    const handleOpenModal = (order: Order) => {
-        setSelectedOrder(order);
-        setIsModalOpen(true);
+    const handleRequestStatusChange = async (id: string, status: 'fulfilled' | 'cancelled') => {
+        const resultAction = await dispatch(updateOrder({ id, updateData: { status } }));
+        if (updateOrder.fulfilled.match(resultAction)) {
+            toast.success(`Request to ${status} sent for order!`);
+        } else if (updateOrder.rejected.match(resultAction)) {
+            toast.error(resultAction.payload as string);
+        }
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
+    const handleConfirmRequest = async (id: string) => {
+        if (!selectedOrder || selectedOrder._id !== id) return;
+        const resultAction = await dispatch(updateOrder({ id, updateData: { confirm: 'yes' } }));
+        if (updateOrder.fulfilled.match(resultAction)) {
+            toast.success(`Order status confirmed!`);
+        } else if (updateOrder.rejected.match(resultAction)) {
+            toast.error(resultAction.payload as string);
+        }
+        setIsConfirmationModalOpen(false);
         setSelectedOrder(null);
+    };
+
+    const handleRejectRequest = async (id: string) => {
+        if (!selectedOrder || selectedOrder._id !== id) return;
+        const resultAction = await dispatch(updateOrder({ id, updateData: { confirm: 'no' } }));
+        if (updateOrder.fulfilled.match(resultAction)) {
+            toast.success(`Order status request rejected.`);
+        } else if (updateOrder.rejected.match(resultAction)) {
+            toast.error(resultAction.payload as string);
+        }
+        setIsConfirmationModalOpen(false);
+        setSelectedOrder(null);
+    };
+
+    const handleOpenDetailsModal = (order: Order) => {
+        setSelectedOrder(order);
+        setIsDetailsModalOpen(true);
+    };
+
+    const handleCloseDetailsModal = () => {
+        setIsDetailsModalOpen(false);
+        setSelectedOrder(null);
+    };
+
+    // New function to refresh the order data
+    const handleRefresh = () => {
+        dispatch(fetchOrdersByRestaurant());
     };
 
     // Pagination Logic
@@ -74,9 +126,20 @@ export default function RestaurantOrdersPage() {
 
     return (
         <RestaurantDashboardLayout>
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">Order History</h2>
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-bold text-gray-900">Order History</h2>
+                <button
+                    onClick={handleRefresh}
+                    className="p-2 text-gray-500 rounded-full hover:bg-gray-100 transition-colors"
+                    title="Refresh Orders"
+                    disabled={loading}
+                >
+                    <RotateCw size={20} className={loading ? 'animate-spin' : ''} />
+                </button>
+            </div>
+
             {orders.length === 0 ? (
-                <div className="text-center text-gray-500 col-span-full py-20 flex flex-col items-center">
+                <div className="bg-white rounded-2xl p-6 shadow-md text-center text-gray-500 col-span-full py-20 flex flex-col items-center">
                     <PackageOpen size={48} className="mb-4" />
                     <p className="text-lg font-medium">You have not received any orders yet.</p>
                 </div>
@@ -105,7 +168,7 @@ export default function RestaurantOrdersPage() {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {currentOrders.map((order) => (
-                                    <tr key={order._id} className="hover:bg-gray-50 transition-colors duration-200 cursor-pointer" onClick={() => handleOpenModal(order)}>
+                                    <tr key={order._id} className="hover:bg-gray-50 transition-colors duration-200" onClick={() => handleOpenDetailsModal(order)}>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-semibold text-gray-900 truncate max-w-[150px]">{order._id}</div>
                                         </td>
@@ -119,6 +182,11 @@ export default function RestaurantOrdersPage() {
                                                 }`}>
                                                 {order.status}
                                             </span>
+                                            {order.pendingStatus && (
+                                                <span className="ml-2 animate-pulse text-xs text-yellow-500">
+                                                    (Pending {order.pendingStatus.status} request)
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(order.createdAt).toLocaleDateString()}
@@ -129,28 +197,37 @@ export default function RestaurantOrdersPage() {
                                                     <>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order._id, 'accepted'); }}
-                                                            className="p-2 text-green-600 hover:text-green-900"
+                                                            className="p-2 text-green-600 cursor-pointer hover:text-green-900"
                                                             title="Accept Order"
                                                         >
                                                             <CheckCircle2 size={20} />
                                                         </button>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order._id, 'declined'); }}
-                                                            className="p-2 text-red-600 hover:text-red-900"
+                                                            className="p-2 text-red-600 cursor-pointer hover:text-red-900"
                                                             title="Decline Order"
                                                         >
                                                             <XCircle size={20} />
                                                         </button>
                                                     </>
                                                 )}
-                                                {order.status === 'accepted' && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order._id, 'fulfilled'); }}
-                                                        className="p-2 text-blue-600 hover:text-blue-900"
-                                                        title="Mark as Fulfilled"
-                                                    >
-                                                        <Edit2 size={20} />
-                                                    </button>
+                                                {order.status === 'accepted' && !order.pendingStatus && (
+                                                    <>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'fulfilled'); }}
+                                                            className="p-2 text-blue-600 cursor-pointer hover:text-blue-900"
+                                                            title="Request Fulfilled"
+                                                        >
+                                                            <CheckCircle2 size={20} />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'cancelled'); }}
+                                                            className="p-2 text-red-600 cursor-pointer hover:text-red-900"
+                                                            title="Request Cancel"
+                                                        >
+                                                            <XCircle size={20} />
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
@@ -183,11 +260,20 @@ export default function RestaurantOrdersPage() {
                 </div>
             )}
             {selectedOrder && (
-                <OrderDetailsModal
-                    isOpen={isModalOpen}
-                    onClose={handleCloseModal}
-                    order={selectedOrder}
-                />
+                <>
+                    <OrderDetailsModal
+                        isOpen={isDetailsModalOpen}
+                        onClose={handleCloseDetailsModal}
+                        order={selectedOrder}
+                    />
+                    <OrderConfirmationModal
+                        isOpen={isConfirmationModalOpen}
+                        onClose={() => setIsConfirmationModalOpen(false)}
+                        order={selectedOrder}
+                        onConfirm={() => handleConfirmRequest(selectedOrder._id)}
+                        onReject={() => handleRejectRequest(selectedOrder._id)}
+                    />
+                </>
             )}
         </RestaurantDashboardLayout>
     );

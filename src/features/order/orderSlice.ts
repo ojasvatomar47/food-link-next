@@ -18,6 +18,10 @@ export interface Order {
   ngoId: string;
   listings: OrderListing[];
   status: "accepted" | "declined" | "requested" | "fulfilled" | "cancelled";
+  pendingStatus?: {
+    status: 'fulfilled' | 'cancelled';
+    requestedBy: string;
+  };
   restReview?: string;
   ngoReview?: string;
   createdAt: Date;
@@ -82,9 +86,10 @@ export const fetchOrdersByNgo = createAsyncThunk(
   }
 );
 
+// Updated thunk to handle two types of actions: status change requests and confirmations
 export const updateOrder = createAsyncThunk(
   "orders/updateOrder",
-  async ({ id, updateData }: { id: string; updateData: { status?: Order['status'], review?: string } }, { rejectWithValue }) => {
+  async ({ id, updateData }: { id: string; updateData: { status?: "accepted" | "declined" | "fulfilled" | "cancelled"; review?: string; confirm?: "yes" | "no"; } }, { rejectWithValue }) => {
     try {
       const res = await apiClient.patch(`/orders/${id}`, updateData);
       return res.data;
@@ -100,7 +105,7 @@ export const updateOrder = createAsyncThunk(
 const orderSlice = createSlice({
   name: "orders",
   initialState,
-  reducers: {},
+  reducers: {}, // This section is now empty as it should be
   extraReducers: (builder) => {
     builder
       .addCase(createOrder.pending, (state) => {
@@ -140,9 +145,10 @@ const orderSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(updateOrder.fulfilled, (state, action) => {
-        const index = state.orders.findIndex(o => o._id === action.payload._id);
+        const updatedOrder = action.payload;
+        const index = state.orders.findIndex(o => o._id === updatedOrder._id);
         if (index !== -1) {
-          state.orders[index] = action.payload;
+          state.orders[index] = updatedOrder;
         }
       });
   },

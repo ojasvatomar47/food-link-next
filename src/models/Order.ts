@@ -12,6 +12,10 @@ export interface IOrder extends Document {
     createdAt: Date;
   }>;
   status: 'accepted' | 'declined' | 'requested' | 'fulfilled' | 'cancelled';
+  pendingStatus?: {
+    status: 'fulfilled' | 'cancelled';
+    requestedBy: mongoose.Types.ObjectId;
+  };
   restReview?: string;
   ngoReview?: string;
 }
@@ -61,6 +65,18 @@ const OrderSchema = new Schema<IOrder>(
       type: String,
       enum: ['accepted', 'declined', 'requested', 'fulfilled', 'cancelled'],
       default: 'requested',
+    },
+    pendingStatus: {
+      type: {
+        status: {
+          type: String,
+          enum: ['fulfilled', 'cancelled'],
+        },
+        requestedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      },
     },
     restReview: {
       type: String,
