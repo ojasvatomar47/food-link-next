@@ -30,7 +30,7 @@ export default function LoginPage() {
       if (userType === "Restaurant") {
         router.push("/restaurant/dashboard");
       } else if (userType === "Charity/NGO") {
-        router.push("/ngo/my-orders");
+        router.push("/ngo/dashboard");
       }
     } else if (loginUser.rejected.match(resultAction)) {
       toast.error(resultAction.payload as string);
@@ -52,12 +52,12 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="block text-gray-800 w-full rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
               required
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="password">
+            <label className="mb-1 block text-sm font-medium text-gray-800" htmlFor="password">
               Password
             </label>
             <input
@@ -65,7 +65,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
+              className="block w-full text-gray-800 rounded-md border-gray-300 p-3 shadow-sm focus:border-green-500 focus:ring-green-500"
               required
             />
           </div>
