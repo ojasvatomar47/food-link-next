@@ -28,14 +28,40 @@ export interface Order {
   updatedAt: Date;
 }
 
+// New interfaces for dashboard analytics
+export interface Review {
+  ngoReview: string;
+  restReview: string;
+}
+
+export interface Stat {
+  _id: string; // The status name
+  count: number;
+}
+
+export interface UserStats {
+  _id: string; // User ID
+  fulfilledCount: number;
+  cancelledCount: number;
+}
+
+export interface Analytics {
+  stats: Stat[];
+  reviews: Review[];
+  ngoStats?: UserStats[]; // For restaurant dashboard
+  restStats?: UserStats[]; // For NGO dashboard
+}
+
 interface OrderState {
   orders: Order[];
+  analytics: Analytics | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: OrderState = {
   orders: [],
+  analytics: null, // New analytics field
   loading: false,
   error: null,
 };
@@ -86,7 +112,6 @@ export const fetchOrdersByNgo = createAsyncThunk(
   }
 );
 
-// Updated thunk to handle two types of actions: status change requests and confirmations
 export const updateOrder = createAsyncThunk(
   "orders/updateOrder",
   async ({ id, updateData }: { id: string; updateData: { status?: "accepted" | "declined" | "fulfilled" | "cancelled"; review?: string; confirm?: "yes" | "no"; } }, { rejectWithValue }) => {
@@ -102,10 +127,42 @@ export const updateOrder = createAsyncThunk(
   }
 );
 
+// New thunk to fetch restaurant analytics
+export const fetchRestaurantAnalytics = createAsyncThunk(
+  "orders/fetchRestaurantAnalytics",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.get("/orders/analytics/restaurant");
+      return res.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Failed to fetch analytics");
+    }
+  }
+);
+
+// New thunk to fetch NGO analytics
+export const fetchNgoAnalytics = createAsyncThunk(
+  "orders/fetchNgoAnalytics",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.get("/orders/analytics/ngo");
+      return res.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue("Failed to fetch analytics");
+    }
+  }
+);
+
 const orderSlice = createSlice({
   name: "orders",
   initialState,
-  reducers: {}, // This section is now empty as it should be
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(createOrder.pending, (state) => {
@@ -150,6 +207,31 @@ const orderSlice = createSlice({
         if (index !== -1) {
           state.orders[index] = updatedOrder;
         }
+      })
+      // Reducers for the new analytics thunks
+      .addCase(fetchRestaurantAnalytics.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchRestaurantAnalytics.fulfilled, (state, action) => {
+        state.loading = false;
+        state.analytics = action.payload;
+      })
+      .addCase(fetchRestaurantAnalytics.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(fetchNgoAnalytics.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchNgoAnalytics.fulfilled, (state, action) => {
+        state.loading = false;
+        state.analytics = action.payload;
+      })
+      .addCase(fetchNgoAnalytics.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

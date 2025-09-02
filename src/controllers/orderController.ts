@@ -207,3 +207,111 @@ export async function updateOrder(req: NextRequest, { params }: { params: { id: 
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }
+
+// @route   GET /api/orders/analytics/restaurant
+// @desc    Fetch analytics for a restaurant
+// @access  Private (Restaurant)
+export async function getRestaurantAnalytics(req: NextRequest) {
+    await dbConnect();
+    try {
+        const userId = req.headers.get('x-user-id');
+        const userType = req.headers.get('x-user-type');
+        if (!userId || userType !== 'Restaurant') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const stats = await Order.aggregate([
+            { $match: { restaurantId: new mongoose.Types.ObjectId(userId) } },
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const reviews = await Order.find({
+            restaurantId: new mongoose.Types.ObjectId(userId),
+            ngoReview: { $ne: '' }
+        }).sort({ createdAt: -1 }).limit(5);
+
+        const ngoStats = await Order.aggregate([
+            { $match: { restaurantId: new mongoose.Types.ObjectId(userId) } },
+            {
+                $group: {
+                    _id: '$ngoId',
+                    fulfilledCount: {
+                        $sum: { $cond: [{ $eq: ['$status', 'fulfilled'] }, 1, 0] }
+                    },
+                    cancelledCount: {
+                        $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        return NextResponse.json({
+            stats,
+            reviews,
+            ngoStats,
+        }, { status: 200 });
+
+    } catch (err) {
+        console.error(err);
+        return NextResponse.json({ error: "Server error" }, { status: 500 });
+    }
+}
+
+// @route   GET /api/orders/analytics/ngo
+// @desc    Fetch analytics for an NGO
+// @access  Private (Charity/NGO)
+export async function getNgoAnalytics(req: NextRequest) {
+    await dbConnect();
+    try {
+        const userId = req.headers.get('x-user-id');
+        const userType = req.headers.get('x-user-type');
+        if (!userId || userType !== 'Charity/NGO') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const stats = await Order.aggregate([
+            { $match: { ngoId: new mongoose.Types.ObjectId(userId) } },
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const reviews = await Order.find({
+            ngoId: new mongoose.Types.ObjectId(userId),
+            restReview: { $ne: '' }
+        }).sort({ createdAt: -1 }).limit(5);
+
+        const restStats = await Order.aggregate([
+            { $match: { ngoId: new mongoose.Types.ObjectId(userId) } },
+            {
+                $group: {
+                    _id: '$restaurantId',
+                    fulfilledCount: {
+                        $sum: { $cond: [{ $eq: ['$status', 'fulfilled'] }, 1, 0] }
+                    },
+                    cancelledCount: {
+                        $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        return NextResponse.json({
+            stats,
+            reviews,
+            restStats,
+        }, { status: 200 });
+
+    } catch (err) {
+        console.error(err);
+        return NextResponse.json({ error: "Server error" }, { status: 500 });
+    }
+}
