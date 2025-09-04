@@ -96,7 +96,7 @@ export default function MyListingsPage() {
         <div className="bg-white rounded-2xl p-6 shadow-md text-center text-gray-500 col-span-full py-20 flex flex-col items-center">
           <PackageOpen size={48} className="mb-4" />
           <p className="text-lg font-medium">You have not created any listings yet.</p>
-          <p className="mt-2 text-gray-600">Go to "Create Listing" to add your first one.</p>
+          <p className="mt-2 text-gray-600">Go to &quot;Create Listing&quot; to add your first one.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-6 shadow-md">

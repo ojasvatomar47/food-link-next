@@ -4,12 +4,34 @@ import Listing from "@/models/Listing";
 import mongoose from "mongoose";
 
 // @route   GET /api/listings
-// @desc    Fetch all available listings for all users (public)
+// @desc    Fetch all available listings with restaurant analytics for NGO
 // @access  Public
 export async function fetchListings(req: NextRequest) {
   await dbConnect();
   try {
-    const listings = await Listing.find({ status: "available" }).sort({ createdAt: -1 });
+    const listings = await Listing.aggregate([
+      { $match: { status: 'available' } },
+      {
+        $lookup: {
+          from: 'orders',
+          localField: 'restaurantId',
+          foreignField: 'restaurantId',
+          as: 'restaurantOrders',
+        },
+      },
+      {
+        $addFields: {
+          avgRestStars: {
+            $avg: '$restaurantOrders.restStars',
+          },
+        },
+      },
+      {
+        $project: {
+          restaurantOrders: 0, // Exclude the temporary field
+        },
+      },
+    ]);
 
     return NextResponse.json(listings, { status: 200 });
   } catch (err) {
@@ -48,7 +70,7 @@ export async function createListing(req: NextRequest) {
   try {
     const restaurantId = req.headers.get('x-user-id');
     const userType = req.headers.get('x-user-type');
-    
+
     if (!restaurantId || userType !== 'Restaurant') {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

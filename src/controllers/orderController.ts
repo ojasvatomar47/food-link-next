@@ -128,7 +128,7 @@ export async function updateOrder(req: NextRequest, { params }: { params: { id: 
 
         const { id } = params;
         const body = await req.json();
-        const { status, review, confirm } = body;
+        const { status, review, stars, confirm } = body;
 
         const order = await Order.findById(id);
         if (!order) {
@@ -188,14 +188,20 @@ export async function updateOrder(req: NextRequest, { params }: { params: { id: 
             }
         }
 
-        // Handle reviews
-        if (review) {
-            if (isRestaurant && !order.restReview) {
+        // Handle reviews and stars
+        if (review || stars) {
+            if (isRestaurant) {
+                if (order.restReview) {
+                    return NextResponse.json({ error: "Restaurant review already submitted" }, { status: 400 });
+                }
                 order.restReview = review;
-            } else if (isNgo && !order.ngoReview) {
+                order.restStars = stars;
+            } else if (isNgo) {
+                if (order.ngoReview) {
+                    return NextResponse.json({ error: "NGO review already submitted" }, { status: 400 });
+                }
                 order.ngoReview = review;
-            } else {
-                return NextResponse.json({ error: "Review already submitted or not authorized" }, { status: 400 });
+                order.ngoStars = stars;
             }
         }
 
@@ -233,7 +239,13 @@ export async function getRestaurantAnalytics(req: NextRequest) {
         const reviews = await Order.find({
             restaurantId: new mongoose.Types.ObjectId(userId),
             ngoReview: { $ne: '' }
-        }).sort({ createdAt: -1 }).limit(5);
+        }).select('ngoReview ngoStars').sort({ createdAt: -1 }).limit(5);
+
+        const avgStarsResult = await Order.aggregate([
+            { $match: { restaurantId: new mongoose.Types.ObjectId(userId), ngoStars: { $exists: true } } },
+            { $group: { _id: null, avgStars: { $avg: '$ngoStars' } } }
+        ]);
+        const avgStars = avgStarsResult.length > 0 ? avgStarsResult[0].avgStars : 0;
 
         const ngoStats = await Order.aggregate([
             { $match: { restaurantId: new mongoose.Types.ObjectId(userId) } },
@@ -254,6 +266,7 @@ export async function getRestaurantAnalytics(req: NextRequest) {
             stats,
             reviews,
             ngoStats,
+            avgStars: avgStars ? avgStars.toFixed(1) : 0,
         }, { status: 200 });
 
     } catch (err) {
@@ -287,7 +300,13 @@ export async function getNgoAnalytics(req: NextRequest) {
         const reviews = await Order.find({
             ngoId: new mongoose.Types.ObjectId(userId),
             restReview: { $ne: '' }
-        }).sort({ createdAt: -1 }).limit(5);
+        }).select('restReview restStars').sort({ createdAt: -1 }).limit(5);
+
+        const avgStarsResult = await Order.aggregate([
+            { $match: { ngoId: new mongoose.Types.ObjectId(userId), restStars: { $exists: true } } },
+            { $group: { _id: null, avgStars: { $avg: '$restStars' } } }
+        ]);
+        const avgStars = avgStarsResult.length > 0 ? avgStarsResult[0].avgStars : 0;
 
         const restStats = await Order.aggregate([
             { $match: { ngoId: new mongoose.Types.ObjectId(userId) } },
@@ -308,6 +327,7 @@ export async function getNgoAnalytics(req: NextRequest) {
             stats,
             reviews,
             restStats,
+            avgStars: avgStars ? avgStars.toFixed(1) : 0,
         }, { status: 200 });
 
     } catch (err) {

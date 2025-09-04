@@ -18,6 +18,8 @@ export interface IOrder extends Document {
   };
   restReview?: string;
   ngoReview?: string;
+  restStars?: number; // New field for restaurant stars
+  ngoStars?: number; // New field for NGO stars
 }
 
 const OrderSchema = new Schema<IOrder>(
@@ -84,6 +86,16 @@ const OrderSchema = new Schema<IOrder>(
     ngoReview: {
       type: String,
     },
+    restStars: {
+      type: Number,
+      min: 1,
+      max: 5,
+    },
+    ngoStars: {
+      type: Number,
+      min: 1,
+      max: 5,
+    }
   },
   {
     timestamps: true,

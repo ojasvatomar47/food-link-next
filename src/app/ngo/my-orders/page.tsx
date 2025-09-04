@@ -6,7 +6,7 @@ import { fetchOrdersByNgo, updateOrder, Order } from "@/features/order/orderSlic
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import NgoDashboardLayout from "@/components/layout/NGODashboardLayout";
-import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw, Star, StarHalf } from "lucide-react";
 import OrderDetailsModal from "@/components/orders/OrderDetailsModal";
 import OrderConfirmationModal from "@/components/orders/OrderConfirmationModal";
 
@@ -16,6 +16,7 @@ export default function NgoOrdersPage() {
     const { user } = useSelector((state: RootState) => state.auth);
     const [currentPage, setCurrentPage] = useState(1);
     const ordersPerPage = 10;
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -32,8 +33,11 @@ export default function NgoOrdersPage() {
         if (pendingOrder) {
             setSelectedOrder(pendingOrder);
             setIsConfirmationModalOpen(true);
+        } else {
+            setIsConfirmationModalOpen(false);
+            setSelectedOrder(null);
         }
-    }, [orders, user, isConfirmationModalOpen]);
+    }, [orders, user]);
 
     const handleRequestStatusChange = async (id: string, status: 'fulfilled' | 'cancelled') => {
         const resultAction = await dispatch(updateOrder({ id, updateData: { status } }));
@@ -42,6 +46,7 @@ export default function NgoOrdersPage() {
         } else if (updateOrder.rejected.match(resultAction)) {
             toast.error(resultAction.payload as string);
         }
+        setOpenDropdown(null);
     };
 
     const handleConfirmRequest = async (id: string) => {
@@ -82,7 +87,36 @@ export default function NgoOrdersPage() {
         dispatch(fetchOrdersByNgo());
     };
 
-    // Pagination Logic
+    const renderStars = (rating: number | undefined) => {
+        if (rating === undefined) return null;
+
+        const starsArray = [];
+        const fullStars = Math.floor(rating); // number of full stars
+        const hasHalfStar = rating % 1 >= 0.5; // check for .5
+        const totalStars = 5;
+
+        for (let i = 1; i <= totalStars; i++) {
+            if (i <= fullStars) {
+                // full star
+                starsArray.push(
+                    <Star key={i} size={16} className="text-yellow-400 fill-current" />
+                );
+            } else if (i === fullStars + 1 && hasHalfStar) {
+                // half star
+                starsArray.push(
+                    <StarHalf key={i} size={16} className="text-yellow-400 fill-current" />
+                );
+            } else {
+                // empty star
+                starsArray.push(
+                    <Star key={i} size={16} className="text-gray-300" />
+                );
+            }
+        }
+
+        return <div className="flex space-x-1">{starsArray}</div>;
+    };
+
     const indexOfLastOrder = currentPage * ordersPerPage;
     const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
     const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
@@ -149,6 +183,9 @@ export default function NgoOrdersPage() {
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Date
                                     </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Stars
+                                    </th>
                                     <th scope="col" className="relative px-6 py-3">
                                         <span className="sr-only">Actions</span>
                                     </th>
@@ -179,25 +216,50 @@ export default function NgoOrdersPage() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(order.createdAt).toLocaleDateString()}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                            {order.restStars ? renderStars(order.restStars) : '-'}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div className="flex items-center justify-end space-x-2">
+                                            <div className="relative inline-block text-left">
                                                 {order.status === 'accepted' && !order.pendingStatus && (
-                                                    <>
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'fulfilled'); }}
-                                                            className="p-2 text-blue-600 cursor-pointer hover:text-blue-900"
-                                                            title="Request Fulfilled"
-                                                        >
-                                                            <CheckCircle2 size={20} />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'cancelled'); }}
-                                                            className="p-2 text-red-600 cursor-pointer hover:text-red-900"
-                                                            title="Request Cancel"
-                                                        >
-                                                            <XCircle size={20} />
-                                                        </button>
-                                                    </>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenDropdown(openDropdown === order._id ? null : order._id);
+                                                        }}
+                                                        className="p-2 text-gray-500 hover:text-gray-900"
+                                                        title="Order Actions"
+                                                    >
+                                                        <MoreHorizontal size={20} />
+                                                    </button>
+                                                )}
+                                                {openDropdown === order._id && (
+                                                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10" role="menu" aria-orientation="vertical" aria-labelledby="menu-button">
+                                                        <div className="py-1" role="none">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleRequestStatusChange(order._id, 'fulfilled');
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
+                                                                role="menuitem"
+                                                            >
+                                                                <CheckCircle2 size={16} className="mr-2" />
+                                                                Request Fulfilled
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleRequestStatusChange(order._id, 'cancelled');
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                                                role="menuitem"
+                                                            >
+                                                                <XCircle size={16} className="mr-2" />
+                                                                Request Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
                                         </td>

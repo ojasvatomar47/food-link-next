@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/features/store";
 import RestaurantDashboardLayout from "@/components/layout/RestaurantDashboardLayout";
-import { Frown, PackageOpen, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, RotateCw, Star, StarHalf } from "lucide-react";
 import { fetchRestaurantAnalytics } from "@/features/order/orderSlice";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
@@ -26,6 +26,36 @@ export default function RestaurantDashboardPage() {
   })) || [];
 
   const COLORS = ['#4caf50', '#ff5722', '#ffc107', '#9e9e9e', '#03a9f4'];
+
+  const renderStars = (rating: number | undefined) => {
+    if (rating === undefined) return null;
+
+    const starsArray = [];
+    const fullStars = Math.floor(rating); // number of full stars
+    const hasHalfStar = rating % 1 >= 0.5; // check for .5
+    const totalStars = 5;
+
+    for (let i = 1; i <= totalStars; i++) {
+      if (i <= fullStars) {
+        // full star
+        starsArray.push(
+          <Star key={i} size={16} className="text-yellow-400 fill-current" />
+        );
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        // half star
+        starsArray.push(
+          <StarHalf key={i} size={16} className="text-yellow-400 fill-current" />
+        );
+      } else {
+        // empty star
+        starsArray.push(
+          <Star key={i} size={16} className="text-gray-300" />
+        );
+      }
+    }
+
+    return <div className="flex space-x-1">{starsArray}</div>;
+  };
 
   // Pagination for Reviews
   const indexOfLastReview = currentReviewPage * itemsPerPage;
@@ -83,6 +113,13 @@ export default function RestaurantDashboardPage() {
 
       <div className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="p-6 rounded-xl bg-white shadow-lg border">
+            <h3 className="text-xl font-semibold capitalize text-gray-700">Average Rating</h3>
+            <div className="flex items-center space-x-2 mt-2">
+              <p className="text-4xl font-bold text-blue-600">{analytics?.avgStars || 0}</p>
+              {renderStars(analytics?.avgStars)}
+            </div>
+          </div>
           {statsData.map((stat, index) => (
             <div key={stat.name} className="p-6 rounded-xl bg-white shadow-lg border">
               <h3 className="text-xl font-semibold capitalize text-gray-700">{stat.name} Orders</h3>
@@ -115,7 +152,7 @@ export default function RestaurantDashboardPage() {
             </ResponsiveContainer>
           </div>
 
-          {(analytics?.reviews && analytics?.reviews?.length > 0) && (
+          {(analytics?.reviews && analytics.reviews.length > 0) && (
             <div className="p-6 rounded-xl bg-white shadow-lg border">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-gray-700">Recent Reviews from NGOs</h3>
@@ -130,22 +167,21 @@ export default function RestaurantDashboardPage() {
                   </div>
                 )}
               </div>
-              {currentReviews.length > 0 ? (
-                <ul className="space-y-4">
-                  {currentReviews.map((review, index) => (
-                    <li key={index} className="bg-gray-50 p-4 rounded-md border">
-                      <p className="text-gray-800 italic">
-                        {review.ngoReview ? `"${review.ngoReview}"` : "(No review left)"}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-2">
-                        - NGO User
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500">No reviews yet.</p>
-              )}
+              <ul className="space-y-4">
+                {currentReviews.map((review, index) => (
+                  <li key={index} className="bg-gray-50 p-4 rounded-md border">
+                    <div className="flex items-center space-x-2 mb-2">
+                      {renderStars(review.ngoStars)}
+                    </div>
+                    <p className="text-gray-800 italic">
+                      {review.ngoReview ? `"${review.ngoReview}"` : "(No review left)"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      - NGO User
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
