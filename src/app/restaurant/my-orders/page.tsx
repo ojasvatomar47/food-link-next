@@ -6,7 +6,7 @@ import { fetchOrdersByRestaurant, updateOrder, Order } from "@/features/order/or
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import RestaurantDashboardLayout from "@/components/layout/RestaurantDashboardLayout";
-import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw, Star, StarHalf } from "lucide-react";
 import OrderDetailsModal from "@/components/orders/OrderDetailsModal";
 import OrderConfirmationModal from "@/components/orders/OrderConfirmationModal";
 
@@ -16,6 +16,7 @@ export default function RestaurantOrdersPage() {
     const { user } = useSelector((state: RootState) => state.auth);
     const [currentPage, setCurrentPage] = useState(1);
     const ordersPerPage = 10;
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -33,8 +34,11 @@ export default function RestaurantOrdersPage() {
         if (pendingOrder) {
             setSelectedOrder(pendingOrder);
             setIsConfirmationModalOpen(true);
+        } else {
+            setIsConfirmationModalOpen(false);
+            setSelectedOrder(null);
         }
-    }, [orders, user, isConfirmationModalOpen]);
+    }, [orders, user]);
 
     const handleUpdateStatus = async (id: string, status: 'accepted' | 'declined') => {
         const resultAction = await dispatch(updateOrder({ id, updateData: { status } }));
@@ -52,6 +56,7 @@ export default function RestaurantOrdersPage() {
         } else if (updateOrder.rejected.match(resultAction)) {
             toast.error(resultAction.payload as string);
         }
+        setOpenDropdown(null);
     };
 
     const handleConfirmRequest = async (id: string) => {
@@ -88,12 +93,40 @@ export default function RestaurantOrdersPage() {
         setSelectedOrder(null);
     };
 
-    // New function to refresh the order data
     const handleRefresh = () => {
         dispatch(fetchOrdersByRestaurant());
     };
 
-    // Pagination Logic
+    const renderStars = (rating: number | undefined) => {
+        if (rating === undefined) return null;
+
+        const starsArray = [];
+        const fullStars = Math.floor(rating); // number of full stars
+        const hasHalfStar = rating % 1 >= 0.5; // check for .5
+        const totalStars = 5;
+
+        for (let i = 1; i <= totalStars; i++) {
+            if (i <= fullStars) {
+                // full star
+                starsArray.push(
+                    <Star key={i} size={16} className="text-yellow-400 fill-current" />
+                );
+            } else if (i === fullStars + 1 && hasHalfStar) {
+                // half star
+                starsArray.push(
+                    <StarHalf key={i} size={16} className="text-yellow-400 fill-current" />
+                );
+            } else {
+                // empty star
+                starsArray.push(
+                    <Star key={i} size={16} className="text-gray-300" />
+                );
+            }
+        }
+
+        return <div className="flex space-x-1">{starsArray}</div>;
+    };
+
     const indexOfLastOrder = currentPage * ordersPerPage;
     const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
     const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
@@ -137,7 +170,6 @@ export default function RestaurantOrdersPage() {
                     <RotateCw size={20} className={loading ? 'animate-spin' : ''} />
                 </button>
             </div>
-
             {orders.length === 0 ? (
                 <div className="bg-white rounded-2xl p-6 shadow-md text-center text-gray-500 col-span-full py-20 flex flex-col items-center">
                     <PackageOpen size={48} className="mb-4" />
@@ -160,6 +192,9 @@ export default function RestaurantOrdersPage() {
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Date
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Stars
                                     </th>
                                     <th scope="col" className="relative px-6 py-3">
                                         <span className="sr-only">Actions</span>
@@ -191,20 +226,23 @@ export default function RestaurantOrdersPage() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(order.createdAt).toLocaleDateString()}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                            {order.ngoStars ? renderStars(order.ngoStars) : '-'}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
                                                 {order.status === 'requested' && (
                                                     <>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order._id, 'accepted'); }}
-                                                            className="p-2 text-green-600 cursor-pointer hover:text-green-900"
+                                                            className="p-2 text-green-600 hover:text-green-900"
                                                             title="Accept Order"
                                                         >
                                                             <CheckCircle2 size={20} />
                                                         </button>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order._id, 'declined'); }}
-                                                            className="p-2 text-red-600 cursor-pointer hover:text-red-900"
+                                                            className="p-2 text-red-600 hover:text-red-900"
                                                             title="Decline Order"
                                                         >
                                                             <XCircle size={20} />
@@ -215,14 +253,14 @@ export default function RestaurantOrdersPage() {
                                                     <>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'fulfilled'); }}
-                                                            className="p-2 text-blue-600 cursor-pointer hover:text-blue-900"
+                                                            className="p-2 text-blue-600 hover:text-blue-900"
                                                             title="Request Fulfilled"
                                                         >
-                                                            <CheckCircle2 size={20} />
+                                                            <MoreHorizontal size={20} />
                                                         </button>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'cancelled'); }}
-                                                            className="p-2 text-red-600 cursor-pointer hover:text-red-900"
+                                                            className="p-2 text-red-600 hover:text-red-900"
                                                             title="Request Cancel"
                                                         >
                                                             <XCircle size={20} />

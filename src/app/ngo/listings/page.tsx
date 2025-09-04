@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchListings, Listing } from "@/features/listing/listingSlice";
+import { fetchListings, ListingWithAvgStars } from "@/features/listing/listingSlice";
 import { createOrder } from "@/features/order/orderSlice";
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import NgoDashboardLayout from "@/components/layout/NGODashboardLayout";
-import { Frown, PackageOpen, ChevronLeft, ChevronRight, ShoppingBag, PlusCircle, Trash2, RotateCw } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, ShoppingBag, PlusCircle, Trash2, RotateCw, Star, StarHalf } from "lucide-react";
 
 interface BasketItem {
   listingId: string;
@@ -32,8 +32,6 @@ export default function NgoListingsPage() {
   const uniqueRestaurants = useMemo(() => {
     const restaurantMap = new Map<string, string>();
     listings.forEach(l => {
-      // Find the user object for the restaurant name
-      // This is a placeholder, a real implementation would have a separate users store or a joined API call
       restaurantMap.set(l.restaurantId, `Restaurant ${l.restaurantId.substring(l.restaurantId.length - 4)}`);
     });
     return Array.from(restaurantMap.entries());
@@ -53,7 +51,7 @@ export default function NgoListingsPage() {
     return filtered;
   }, [listings, selectedRestaurantId, searchTerm]);
 
-  const handleAddToBasket = (listing: Listing) => {
+  const handleAddToBasket = (listing: ListingWithAvgStars) => {
     if (basket.length > 0 && basket[0].restaurantId !== listing.restaurantId) {
       toast.error("You can only add listings from one restaurant at a time.");
       return;
@@ -109,6 +107,36 @@ export default function NgoListingsPage() {
 
   const handleRefresh = () => {
     dispatch(fetchListings());
+  };
+
+  const renderStars = (rating: number | undefined) => {
+    if (rating === undefined) return null;
+
+    const starsArray = [];
+    const fullStars = Math.floor(rating); // number of full stars
+    const hasHalfStar = rating % 1 >= 0.5; // check for .5
+    const totalStars = 5;
+
+    for (let i = 1; i <= totalStars; i++) {
+      if (i <= fullStars) {
+        // full star
+        starsArray.push(
+          <Star key={i} size={16} className="text-yellow-400 fill-current" />
+        );
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        // half star
+        starsArray.push(
+          <StarHalf key={i} size={16} className="text-yellow-400 fill-current" />
+        );
+      } else {
+        // empty star
+        starsArray.push(
+          <Star key={i} size={16} className="text-gray-300" />
+        );
+      }
+    }
+
+    return <div className="flex space-x-1">{starsArray}</div>;
   };
 
   // Pagination Logic
@@ -204,6 +232,9 @@ export default function NgoListingsPage() {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Restaurant
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Restaurant's Rating
+                  </th>
                   <th scope="col" className="relative px-6 py-3">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -220,6 +251,9 @@ export default function NgoListingsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {uniqueRestaurants.find(([id]) => id === listing.restaurantId)?.[1]}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {listing.avgRestStars ? renderStars(listing.avgRestStars) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button

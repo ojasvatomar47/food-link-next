@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import apiClient from "@/lib/axios";
 import axios from "axios";
 
@@ -14,8 +14,13 @@ export interface Listing {
   claimedBy?: string;
 }
 
+// New interface for the enriched listings data
+export interface ListingWithAvgStars extends Listing {
+  avgRestStars?: number;
+}
+
 interface ListingState {
-  listings: Listing[];
+  listings: ListingWithAvgStars[]; // Updated to use the new interface
   loading: boolean;
   error: string | null;
 }
@@ -42,6 +47,7 @@ export const createListing = createAsyncThunk(
   }
 );
 
+// This thunk is now for fetching all listings with avg stars
 export const fetchListings = createAsyncThunk(
   "listings/fetchListings",
   async (_, { rejectWithValue }) => {
@@ -56,7 +62,6 @@ export const fetchListings = createAsyncThunk(
     }
   }
 );
-
 
 export const fetchRestaurantListings = createAsyncThunk(
   "listings/fetchRestaurantListings",

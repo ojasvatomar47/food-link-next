@@ -24,14 +24,18 @@ export interface Order {
   };
   restReview?: string;
   ngoReview?: string;
+  restStars?: number; // New field for restaurant stars
+  ngoStars?: number; // New field for NGO stars
   createdAt: Date;
   updatedAt: Date;
 }
 
 // New interfaces for dashboard analytics
 export interface Review {
-  ngoReview: string;
-  restReview: string;
+  ngoReview?: string;
+  restReview?: string;
+  restStars?: number;
+  ngoStars?: number;
 }
 
 export interface Stat {
@@ -48,6 +52,7 @@ export interface UserStats {
 export interface Analytics {
   stats: Stat[];
   reviews: Review[];
+  avgStars: number; // New field for average stars
   ngoStats?: UserStats[]; // For restaurant dashboard
   restStats?: UserStats[]; // For NGO dashboard
 }
@@ -114,7 +119,7 @@ export const fetchOrdersByNgo = createAsyncThunk(
 
 export const updateOrder = createAsyncThunk(
   "orders/updateOrder",
-  async ({ id, updateData }: { id: string; updateData: { status?: "accepted" | "declined" | "fulfilled" | "cancelled"; review?: string; confirm?: "yes" | "no"; } }, { rejectWithValue }) => {
+  async ({ id, updateData }: { id: string; updateData: { status?: "accepted" | "declined" | "fulfilled" | "cancelled"; review?: string; stars?: number; confirm?: "yes" | "no"; } }, { rejectWithValue }) => {
     try {
       const res = await apiClient.patch(`/orders/${id}`, updateData);
       return res.data;
@@ -208,7 +213,6 @@ const orderSlice = createSlice({
           state.orders[index] = updatedOrder;
         }
       })
-      // Reducers for the new analytics thunks
       .addCase(fetchRestaurantAnalytics.pending, (state) => {
         state.loading = true;
         state.error = null;
