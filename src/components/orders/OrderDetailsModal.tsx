@@ -137,7 +137,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }: OrderDetai
                             <div className="flex items-center space-x-2 mb-2">
                                 {renderStars(otherUserStars)}
                             </div>
-                            <p className="text-gray-800 italic">"{otherUserReview}"</p>
+                            <p className="text-gray-800 italic">&quot;{otherUserReview}&quot;</p>
                         </div>
                     </div>
                 )}
@@ -150,7 +150,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }: OrderDetai
                             <div className="flex items-center space-x-2 mb-2">
                                 {renderStars(currentUserStars)}
                             </div>
-                            <p className="text-gray-800 italic">"{currentUserReview}"</p>
+                            <p className="text-gray-800 italic">&quot;{currentUserReview}&quot;</p>
                         </div>
                     </div>
                 )}
