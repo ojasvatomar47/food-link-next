@@ -9,6 +9,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+convex/_generated/
 
 # testing
 /coverage
