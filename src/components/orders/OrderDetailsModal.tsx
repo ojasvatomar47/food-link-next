@@ -128,13 +128,6 @@ export default function OrderDetailsModal({ isOpen, onClose, order }: OrderDetai
                     </table>
                 </div>
 
-                <div className="mt-6 border-t pt-4">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-3">Chat with User</h4>
-                    <div className="h-64 overflow-y-auto border rounded-lg">
-                        <ChatRoom orderId={order._id} userId={user!.id} />
-                    </div>
-                </div>
-
                 {/* Review from the other user */}
                 {isReviewable && otherUserReview && (
                     <div className="mt-6 border-t pt-4">
