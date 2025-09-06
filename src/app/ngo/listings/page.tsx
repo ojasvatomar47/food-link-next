@@ -8,6 +8,7 @@ import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import NgoDashboardLayout from "@/components/layout/NGODashboardLayout";
 import { Frown, PackageOpen, ChevronLeft, ChevronRight, ShoppingBag, PlusCircle, Trash2, RotateCw, Star, StarHalf } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface BasketItem {
   listingId: string;
@@ -24,6 +25,8 @@ export default function NgoListingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [basket, setBasket] = useState<BasketItem[]>([]);
+
+  const router = useRouter();
 
   useEffect(() => {
     dispatch(fetchListings());
@@ -100,6 +103,7 @@ export default function NgoListingsPage() {
       setBasket([]);
       setSelectedRestaurantId(null);
       dispatch(fetchListings());
+      router.push("/ngo/my-orders");
     } else if (createOrder.rejected.match(resultAction)) {
       toast.error(resultAction.payload as string);
     }
