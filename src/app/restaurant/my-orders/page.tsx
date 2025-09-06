@@ -6,9 +6,10 @@ import { fetchOrdersByRestaurant, updateOrder, Order } from "@/features/order/or
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import RestaurantDashboardLayout from "@/components/layout/RestaurantDashboardLayout";
-import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw, Star, StarHalf } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw, Star, StarHalf, MessageSquare } from "lucide-react";
 import OrderDetailsModal from "@/components/orders/OrderDetailsModal";
 import OrderConfirmationModal from "@/components/orders/OrderConfirmationModal";
+import ChatRoom from "@/components/ChatRoom";
 
 export default function RestaurantOrdersPage() {
     const dispatch = useDispatch<AppDispatch>();
@@ -21,6 +22,8 @@ export default function RestaurantOrdersPage() {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     useEffect(() => {
         dispatch(fetchOrdersByRestaurant());
@@ -93,37 +96,45 @@ export default function RestaurantOrdersPage() {
         setSelectedOrder(null);
     };
 
+    // Corrected handlers for chat modal
+    const handleOpenChat = (e: React.MouseEvent, order: Order) => {
+        e.stopPropagation(); // Prevent the table row's click handler from firing
+        setSelectedOrder(order); // Set the selected order first
+        setIsChatOpen(true); // Then open the chat
+        setOpenDropdown(null); // Close the dropdown if open
+    };
+
+    const handleCloseChat = () => {
+        setIsChatOpen(false);
+        setSelectedOrder(null); // Reset the selected order when the chat is closed
+    };
+
     const handleRefresh = () => {
         dispatch(fetchOrdersByRestaurant());
     };
 
     const renderStars = (rating: number | undefined) => {
         if (rating === undefined) return null;
-
         const starsArray = [];
-        const fullStars = Math.floor(rating); // number of full stars
-        const hasHalfStar = rating % 1 >= 0.5; // check for .5
+        const fullStars = Math.floor(rating);
+        const hasHalfStar = rating % 1 >= 0.5;
         const totalStars = 5;
 
         for (let i = 1; i <= totalStars; i++) {
             if (i <= fullStars) {
-                // full star
                 starsArray.push(
                     <Star key={i} size={16} className="text-yellow-400 fill-current" />
                 );
             } else if (i === fullStars + 1 && hasHalfStar) {
-                // half star
                 starsArray.push(
                     <StarHalf key={i} size={16} className="text-yellow-400 fill-current" />
                 );
             } else {
-                // empty star
                 starsArray.push(
                     <Star key={i} size={16} className="text-gray-300" />
                 );
             }
         }
-
         return <div className="flex space-x-1">{starsArray}</div>;
     };
 
@@ -250,22 +261,55 @@ export default function RestaurantOrdersPage() {
                                                     </>
                                                 )}
                                                 {order.status === 'accepted' && !order.pendingStatus && (
-                                                    <>
+                                                    <div className="relative inline-block text-left">
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'fulfilled'); }}
-                                                            className="p-2 text-blue-600 hover:text-blue-900"
-                                                            title="Request Fulfilled"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setOpenDropdown(openDropdown === order._id ? null : order._id);
+                                                            }}
+                                                            className="p-2 text-gray-500 hover:text-gray-900"
+                                                            title="Order Actions"
                                                         >
                                                             <MoreHorizontal size={20} />
                                                         </button>
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleRequestStatusChange(order._id, 'cancelled'); }}
-                                                            className="p-2 text-red-600 hover:text-red-900"
-                                                            title="Request Cancel"
-                                                        >
-                                                            <XCircle size={20} />
-                                                        </button>
-                                                    </>
+                                                        {openDropdown === order._id && (
+                                                            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10" role="menu" aria-orientation="vertical" aria-labelledby="menu-button">
+                                                                <div className="py-1" role="none">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleRequestStatusChange(order._id, 'fulfilled');
+                                                                        }}
+                                                                        className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
+                                                                        role="menuitem"
+                                                                    >
+                                                                        <CheckCircle2 size={16} className="mr-2" />
+                                                                        Request Fulfilled
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleRequestStatusChange(order._id, 'cancelled');
+                                                                        }}
+                                                                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                                                        role="menuitem"
+                                                                    >
+                                                                        <XCircle size={16} className="mr-2" />
+                                                                        Request Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {order.status !== "requested" && order.status !== "declined" && (
+                                                    <button
+                                                        onClick={(e) => handleOpenChat(e, order)}
+                                                        className="p-2 text-gray-500 hover:text-blue-600 ml-2"
+                                                        title="Open Chat"
+                                                    >
+                                                        <MessageSquare size={20} />
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>
@@ -312,6 +356,15 @@ export default function RestaurantOrdersPage() {
                         onReject={() => handleRejectRequest(selectedOrder._id)}
                     />
                 </>
+            )}
+            {isChatOpen && selectedOrder && user?.id && (
+                <ChatRoom
+                    orderId={selectedOrder._id}
+                    userId={user.id}
+                    orderStatus={selectedOrder.status}
+                    userType={user.userType}
+                    onClose={handleCloseChat}
+                />
             )}
         </RestaurantDashboardLayout>
     );

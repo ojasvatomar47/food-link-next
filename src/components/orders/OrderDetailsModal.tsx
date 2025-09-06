@@ -6,6 +6,7 @@ import { Order, updateOrder } from "@/features/order/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
+import ChatRoom from "../ChatRoom";
 
 interface OrderDetailsModalProps {
     isOpen: boolean;

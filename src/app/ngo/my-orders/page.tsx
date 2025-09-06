@@ -6,9 +6,10 @@ import { fetchOrdersByNgo, updateOrder, Order } from "@/features/order/orderSlic
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import NgoDashboardLayout from "@/components/layout/NGODashboardLayout";
-import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw, Star, StarHalf } from "lucide-react";
+import { Frown, PackageOpen, ChevronLeft, ChevronRight, CheckCircle2, XCircle, MoreHorizontal, RotateCw, Star, StarHalf, MessageSquare } from "lucide-react";
 import OrderDetailsModal from "@/components/orders/OrderDetailsModal";
 import OrderConfirmationModal from "@/components/orders/OrderConfirmationModal";
+import ChatRoom from "@/components/ChatRoom";
 
 export default function NgoOrdersPage() {
     const dispatch = useDispatch<AppDispatch>();
@@ -21,6 +22,8 @@ export default function NgoOrdersPage() {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     useEffect(() => {
         dispatch(fetchOrdersByNgo());
@@ -83,37 +86,45 @@ export default function NgoOrdersPage() {
         setSelectedOrder(null);
     };
 
+    // Corrected handlers for chat modal
+    const handleOpenChat = (e: React.MouseEvent, order: Order) => {
+        e.stopPropagation(); // Prevent the table row's click handler from firing
+        setSelectedOrder(order); // Set the selected order first
+        setIsChatOpen(true); // Then open the chat
+        setOpenDropdown(null); // Close the dropdown if open
+    };
+
+    const handleCloseChat = () => {
+        setIsChatOpen(false);
+        setSelectedOrder(null); // Reset the selected order when the chat is closed
+    };
+
     const handleRefresh = () => {
         dispatch(fetchOrdersByNgo());
     };
 
     const renderStars = (rating: number | undefined) => {
         if (rating === undefined) return null;
-
         const starsArray = [];
-        const fullStars = Math.floor(rating); // number of full stars
-        const hasHalfStar = rating % 1 >= 0.5; // check for .5
+        const fullStars = Math.floor(rating);
+        const hasHalfStar = rating % 1 >= 0.5;
         const totalStars = 5;
 
         for (let i = 1; i <= totalStars; i++) {
             if (i <= fullStars) {
-                // full star
                 starsArray.push(
                     <Star key={i} size={16} className="text-yellow-400 fill-current" />
                 );
             } else if (i === fullStars + 1 && hasHalfStar) {
-                // half star
                 starsArray.push(
                     <StarHalf key={i} size={16} className="text-yellow-400 fill-current" />
                 );
             } else {
-                // empty star
                 starsArray.push(
                     <Star key={i} size={16} className="text-gray-300" />
                 );
             }
         }
-
         return <div className="flex space-x-1">{starsArray}</div>;
     };
 
@@ -261,6 +272,15 @@ export default function NgoOrdersPage() {
                                                         </div>
                                                     </div>
                                                 )}
+                                                {order.status !== "requested" && order.status !== "declined" && (
+                                                    <button
+                                                        onClick={(e) => handleOpenChat(e, order)}
+                                                        className="p-2 text-gray-500 hover:text-blue-600 ml-2"
+                                                        title="Open Chat"
+                                                    >
+                                                        <MessageSquare size={20} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -308,6 +328,15 @@ export default function NgoOrdersPage() {
                         />
                     )}
                 </>
+            )}
+            {isChatOpen && selectedOrder && user?.id && (
+                <ChatRoom
+                    orderId={selectedOrder._id}
+                    userId={user.id}
+                    orderStatus={selectedOrder.status}
+                    userType={user.userType}
+                    onClose={handleCloseChat}
+                />
             )}
         </NgoDashboardLayout>
     );
