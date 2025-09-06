@@ -1,23 +1,20 @@
-"use client";
-
-import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ReactNode } from "react";
-import { Providers } from "./providers";
-import ToastProvider from "./ToastProvider";
-import "./globals.css"
+import "./globals.css";
+import ConvexClientProvider from "./ConvexClientProvider";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// This is a Server Component, so metadata is allowed
+export const metadata = {
+  title: "Food Link",
+  description: "Connecting restaurants with NGOs to reduce food waste",
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <ConvexProvider client={convex}>
-          <Providers>
-            <ToastProvider />
-            {children}
-          </Providers>
-        </ConvexProvider>
+        <ConvexClientProvider>
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   );
