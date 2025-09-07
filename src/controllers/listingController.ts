@@ -20,15 +20,29 @@ export async function fetchListings(req: NextRequest) {
         },
       },
       {
+        $lookup: {
+          from: 'users',
+          localField: 'restaurantId',
+          foreignField: '_id',
+          as: 'restaurantUser',
+        },
+      },
+      { $unwind: '$restaurantUser' },
+      {
         $addFields: {
           avgRestStars: {
             $avg: '$restaurantOrders.restStars',
+          },
+          restaurantLocation: {
+            latitude: '$restaurantUser.latitude',
+            longitude: '$restaurantUser.longitude',
           },
         },
       },
       {
         $project: {
-          restaurantOrders: 0, // Exclude the temporary field
+          restaurantOrders: 0,
+          restaurantUser: 0,
         },
       },
     ]);

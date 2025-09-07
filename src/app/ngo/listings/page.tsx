@@ -2,13 +2,18 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchListings, ListingWithAvgStars } from "@/features/listing/listingSlice";
+import { fetchListings, ListingWithLocationAndAvgStars } from "@/features/listing/listingSlice";
 import { createOrder } from "@/features/order/orderSlice";
 import { AppDispatch, RootState } from "@/features/store";
 import toast from "react-hot-toast";
 import NgoDashboardLayout from "@/components/layout/NGODashboardLayout";
 import { Frown, PackageOpen, ChevronLeft, ChevronRight, ShoppingBag, PlusCircle, Trash2, RotateCw, Star, StarHalf } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+// Define a new interface to include distance
+interface ListingWithDistance extends ListingWithLocationAndAvgStars {
+  distance?: number;
+}
 
 interface BasketItem {
   listingId: string;
@@ -25,12 +30,104 @@ export default function NgoListingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [basket, setBasket] = useState<BasketItem[]>([]);
+  const [ngoLocation, setNgoLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [distances, setDistances] = useState<Record<string, number>>({});
+  const [isCalculatingDistance, setIsCalculatingDistance] = useState(true);
 
   const router = useRouter();
 
+  // Fetch listings and get NGO location on initial load
   useEffect(() => {
     dispatch(fetchListings());
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setNgoLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (err) => {
+          console.error("Geolocation error:", err);
+          toast.error("Could not get your location. Distances cannot be calculated.");
+          setIsCalculatingDistance(false);
+        }
+      );
+    } else {
+      toast.error("Geolocation is not supported by your browser.");
+      setIsCalculatingDistance(false);
+    }
   }, [dispatch]);
+
+  // Calculate distances once listings and NGO location are available
+  useEffect(() => {
+    const calculateDistances = async () => {
+      if (!ngoLocation || listings.length === 0) {
+        return;
+      }
+      setIsCalculatingDistance(true);
+
+      const apiKey = process.env.NEXT_PUBLIC_ORS_API_KEY;
+      if (!apiKey) {
+        console.error("ORS API key is missing from environment variables.");
+        toast.error("Map services are unavailable. Please check the API key.");
+        setIsCalculatingDistance(false);
+        return;
+      }
+
+      const uniqueRestaurantLocations = Array.from(
+        new Map(listings.map((l) => [l.restaurantId, l.restaurantLocation])).values()
+      );
+
+      const coordinates = [
+        [ngoLocation.longitude, ngoLocation.latitude],
+        ...uniqueRestaurantLocations.map((loc) => [loc.longitude, loc.latitude]),
+      ];
+
+      const orsRequest = {
+        locations: coordinates,
+        metrics: ["distance", "duration"],
+      };
+
+      try {
+        const res = await fetch("https://api.openrouteservice.org/v2/matrix/driving-car", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": apiKey,
+          },
+          body: JSON.stringify(orsRequest),
+        });
+
+        if (!res.ok) {
+          throw new Error(`ORS API error: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+
+        const calculatedDistances: Record<string, number> = {};
+        listings.forEach(l => {
+          const restaurantIndex = uniqueRestaurantLocations.findIndex(
+            (loc) => loc.latitude === l.restaurantLocation.latitude && loc.longitude === l.restaurantLocation.longitude
+          );
+          if (data.distances && data.distances[0] && data.distances[0][restaurantIndex + 1]) {
+            // Convert meters to kilometers and round to 1 decimal place
+            calculatedDistances[l.restaurantId] = parseFloat((data.distances[0][restaurantIndex + 1] / 1000).toFixed(1));
+          }
+        });
+        setDistances(calculatedDistances);
+      } catch (err) {
+        console.error("Error fetching distance from ORS:", err);
+        toast.error("Failed to calculate distances.");
+      } finally {
+        setIsCalculatingDistance(false);
+      }
+    };
+
+    if (listings.length > 0 && ngoLocation) {
+      calculateDistances();
+    }
+  }, [listings, ngoLocation]);
 
   const uniqueRestaurants = useMemo(() => {
     const restaurantMap = new Map<string, string>();
@@ -40,8 +137,8 @@ export default function NgoListingsPage() {
     return Array.from(restaurantMap.entries());
   }, [listings]);
 
-  const filteredListings = useMemo(() => {
-    let filtered = listings;
+  const filteredListings: ListingWithDistance[] = useMemo(() => {
+    let filtered = listings as ListingWithDistance[];
 
     if (selectedRestaurantId) {
       filtered = filtered.filter(l => l.restaurantId === selectedRestaurantId);
@@ -51,10 +148,14 @@ export default function NgoListingsPage() {
       filtered = filtered.filter(l => l.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
 
-    return filtered;
-  }, [listings, selectedRestaurantId, searchTerm]);
+    // Add distance to each listing
+    return filtered.map(listing => ({
+      ...listing,
+      distance: distances[listing.restaurantId]
+    }));
+  }, [listings, selectedRestaurantId, searchTerm, distances]);
 
-  const handleAddToBasket = (listing: ListingWithAvgStars) => {
+  const handleAddToBasket = (listing: ListingWithLocationAndAvgStars) => {
     if (basket.length > 0 && basket[0].restaurantId !== listing.restaurantId) {
       toast.error("You can only add listings from one restaurant at a time.");
       return;
@@ -117,33 +218,28 @@ export default function NgoListingsPage() {
     if (rating === undefined) return null;
 
     const starsArray = [];
-    const fullStars = Math.floor(rating); // number of full stars
-    const hasHalfStar = rating % 1 >= 0.5; // check for .5
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
     const totalStars = 5;
 
     for (let i = 1; i <= totalStars; i++) {
       if (i <= fullStars) {
-        // full star
         starsArray.push(
           <Star key={i} size={16} className="text-yellow-400 fill-current" />
         );
       } else if (i === fullStars + 1 && hasHalfStar) {
-        // half star
         starsArray.push(
           <StarHalf key={i} size={16} className="text-yellow-400 fill-current" />
         );
       } else {
-        // empty star
         starsArray.push(
           <Star key={i} size={16} className="text-gray-300" />
         );
       }
     }
-
     return <div className="flex space-x-1">{starsArray}</div>;
   };
 
-  // Pagination Logic
   const indexOfLastListing = currentPage * listingsPerPage;
   const indexOfFirstListing = indexOfLastListing - listingsPerPage;
   const currentListings = filteredListings.slice(indexOfFirstListing, indexOfLastListing);
@@ -239,6 +335,9 @@ export default function NgoListingsPage() {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Restaurant&apos;s Rating
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Distance
+                  </th>
                   <th scope="col" className="relative px-6 py-3">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -258,6 +357,15 @@ export default function NgoListingsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {listing.avgRestStars ? renderStars(listing.avgRestStars) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {isCalculatingDistance ? (
+                        <RotateCw size={16} className="animate-spin text-gray-400" />
+                      ) : listing.distance !== undefined ? (
+                        `${listing.distance} km`
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button

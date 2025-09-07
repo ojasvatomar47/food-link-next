@@ -14,13 +14,16 @@ export interface Listing {
   claimedBy?: string;
 }
 
-// New interface for the enriched listings data
-export interface ListingWithAvgStars extends Listing {
+export interface ListingWithLocationAndAvgStars extends Listing {
   avgRestStars?: number;
+  restaurantLocation: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 interface ListingState {
-  listings: ListingWithAvgStars[]; // Updated to use the new interface
+  listings: ListingWithLocationAndAvgStars[];
   loading: boolean;
   error: string | null;
 }
@@ -47,7 +50,7 @@ export const createListing = createAsyncThunk(
   }
 );
 
-// This thunk is now for fetching all listings with avg stars
+// This thunk is now for fetching all listings with avg stars and location
 export const fetchListings = createAsyncThunk(
   "listings/fetchListings",
   async (_, { rejectWithValue }) => {
